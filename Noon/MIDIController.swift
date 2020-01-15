@@ -55,7 +55,12 @@ class MIDIController {
         let paramsData = withUnsafePointer(to: &_thruParams) { p in
             NSData(bytes: p, length: len)
         }
-        let res = MIDIThruConnectionCreate(nil, paramsData, &_conRef) //TODO: Make that work or remove it
+        //let res = MIDIThruConnectionCreate(nil, paramsData, &_conRef) //TODO: Make that work or remove it
+    }
+    
+    deinit {
+        MIDIPortDispose(_portRef)
+        MIDIClientDispose(_ref)
     }
     
     func numberOfDevices() -> Int {
