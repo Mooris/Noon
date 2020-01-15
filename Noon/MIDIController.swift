@@ -24,9 +24,12 @@ class MIDIController {
     private var _ref = MIDIClientRef()
     private var _edp = MIDIEndpointRef()
     private var _thruParams = MIDIThruConnectionParams()
-    private var _ids: MIDIUniqueID = 0
+    private var _ids: MIDIUniqueID = 0xFF69b4
     private var _conRef = MIDIThruConnectionRef()
     private var _portRef = MIDIPortRef()
+    
+        /* Tests */
+    private var _midiThruDests: [MIDIThruConnectionEndpoint] = []
     private var tmp: (MIDIDevice, MIDIPortRef)?
     
     init() {
@@ -46,19 +49,25 @@ class MIDIController {
         MIDIDestinationCreate(_ref, "Noon endpoint" as CFString, { (pl, cls, c) -> Void in
             guard let (dsts, port) = cls?.load(as: (MIDIDevice, MIDIPortRef).self) else { print("nil arg"); return }
             for endpt in dsts.dests {
-                MIDISend(port, endpt.ref, pl)
+                //MIDISend(port, endpt.ref, pl)
             }
         }, &tmp, &_edp)
 
+        withUnsafeMutablePointer(to: &_thruParams.destinations) { dst -> Void in
+            memcpy(dst, _midiThruDests, _midiThruDests.count) // Should be ok I guess
+            return
+        }
         
         let len = MIDIThruConnectionParamsSize(&self._thruParams)
         let paramsData = withUnsafePointer(to: &_thruParams) { p in
             NSData(bytes: p, length: len)
         }
-        //let res = MIDIThruConnectionCreate(nil, paramsData, &_conRef) //TODO: Make that work or remove it
+        let res = MIDIThruConnectionCreate("com.appankarton.Noon" as CFString, paramsData, &_conRef) //TODO: Make that work or remove it
+        print("res = \(res)")
     }
     
     deinit {
+        MIDIThruConnectionDispose(_conRef)
         MIDIPortDispose(_portRef)
         MIDIClientDispose(_ref)
     }
@@ -105,21 +114,9 @@ class MIDIController {
                 let displayName = self._nameOf(device: dest)
                 if (displayName != "Error") { // TODO: Optional putain
                     ret.append(Dest(id: index, name: displayName, ref: dest));
-                    print("NOWOWO \(displayName)")
                     if (entitiesNb == 4) {
+                        _midiThruDests.append(MIDIThruConnectionEndpoint(endpointRef: _edp, uniqueID: self._ids))
                         _thruParams.numDestinations += 1
-                        switch _ids {
-                            case 0:
-                                _thruParams.destinations.0 = MIDIThruConnectionEndpoint(endpointRef: _edp, uniqueID: self._ids)
-                            case 1:
-                                _thruParams.destinations.1 = MIDIThruConnectionEndpoint(endpointRef: _edp, uniqueID: self._ids)
-                            case 2:
-                                _thruParams.destinations.2 = MIDIThruConnectionEndpoint(endpointRef: _edp, uniqueID: self._ids)
-                            case 3:
-                                _thruParams.destinations.3 = MIDIThruConnectionEndpoint(endpointRef: _edp, uniqueID: self._ids)
-                        default:
-                            continue
-                        }
                         self._ids += 1
                         print("Should be on teh interface need a button \(self._ids)")
                         
